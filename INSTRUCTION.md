@@ -1,85 +1,60 @@
-# Kubernetes Deployment Instructions
+# Django ToDo list
 
-## Prerequisites
+This is a to-do list web application with the basic features of most web apps, i.e., accounts/login, API, and interactive UI. To do this task, you will need:
 
-Before deploying the application, make sure that:
+- CSS | [Skeleton](http://getskeleton.com/)
+- JS  | [jQuery](https://jquery.com/)
 
-- a Kubernetes cluster is running;
-- `kubectl` is installed and connected to the cluster;
-- the `mateapp` namespace manifest is present;
-- the application image is available in the container registry.
+## Explore
 
-## Deploy the application
+Try it out by installing the requirements (the following commands work only with Python 3.8 and higher, due to Django 4):
 
-Apply all Kubernetes manifests from the `.infrastructure` directory:
-
-```bash
-kubectl apply -f .infrastructure/
+```sh
+pip install -r requirements.txt
 ```
 
-Verify the created resources:
+Create a database schema:
 
-```bash
-kubectl get deployments -n mateapp
-kubectl get pods -n mateapp
-kubectl get hpa -n mateapp
-kubectl get services -n mateapp
+```sh
+python manage.py migrate
 ```
 
-The Deployment starts with two replicas.
+And then start the server (default is <http://localhost:8000>):
 
-## Resource requests and limits
-
-Each application container uses the following resource configuration:
-
-- CPU request: `250m`
-- CPU limit: `500m`
-- Memory request: `64Mi`
-- Memory limit: `128Mi`
-
-These values are reasonable initial settings for a small Django application. Requests reserve enough resources for normal operation, while limits allow additional capacity during short load increases. The limits are twice the requests, giving the container room to handle temporary traffic spikes.
-
-In a production environment, these values should be adjusted after monitoring the real CPU and memory usage of the application.
-
-## Horizontal Pod Autoscaler
-
-The HPA keeps between 2 and 5 application pods.
-
-- `minReplicas: 2` keeps two pods available during normal operation.
-- `maxReplicas: 5` prevents the application from consuming unlimited cluster resources.
-- CPU and memory targets are set to `70%` of the configured resource requests.
-
-The 70% threshold leaves some available capacity before the pods become fully loaded. More accurate thresholds should be selected after load testing and observing real application metrics.
-
-## RollingUpdate strategy
-
-The Deployment uses the `RollingUpdate` strategy:
-
-- `maxSurge: 1`
-- `maxUnavailable: 0`
-
-`maxSurge: 1` allows Kubernetes to create one additional pod during an update. `maxUnavailable: 0` ensures that the number of available pods does not fall below the desired replica count.
-
-With two replicas, Kubernetes creates a new pod, waits until it becomes ready, and only then removes an old pod. This keeps the application available during updates.
-
-## Access the application
-
-The application is exposed through a NodePort Service.
-
-Check the Service and its assigned NodePort:
-
-```bash
-kubectl get services -n mateapp
+```sh
+python manage.py runserver
 ```
 
-Check the cluster node IP:
+You can now browse the [API](http://localhost:8000/api/) or start on the [landing page](http://localhost:8000/).
 
-```bash
-kubectl get nodes -o wide
+## Deployment
+
+to deploy app use following command:
+
+```sh
+kubectl create ns mateapp && \
+kubectl apply -f .infrastructure/deployment.yml && \
+kubectl apply -f .infrastructure/hpa.yml && \
+kubectl apply -f .infrastructure/clusterIp.yml
 ```
 
-Open the application using:
+## Choice explanation
 
-```text
-http://<NODE_IP>:30080
+1. Resource limits and request for deployment \
+    Small Django app doesn't need too much resources for initial start, but need more that usual in high usage due to low event loop engine optimization.
+
+1. Resource utilization for horizontal scaling in horizontal pod autoscaler \
+    Optimal replicas in small utilization is 2 and in high load (+-70%) up to 5 replicas
+
+1. Update strategy configuration \
+    for strategy maximum unavailbe 0 pod and max surge 1 for easy app access during rolling update
+
+## Easy access to app
+
+To access the app use ```kubectl port-forward``` function, just enter
+
+```sh
+kubectl port-forward svc/todoapp -n mateapp 8080:80
 ```
+
+and follow [the link](http://localhost:8080/)
