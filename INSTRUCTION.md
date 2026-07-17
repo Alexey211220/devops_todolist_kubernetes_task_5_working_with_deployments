@@ -81,17 +81,5 @@ kubectl get nodes -o wide
 Open the application using:
 
 ```text
-http://<NODE_IP>:<NODE_PORT>
-```
-
-For local testing, the Service can also be accessed with port forwarding:
-
-```bash
-kubectl port-forward -n mateapp service/todoapp 8080:8080
-```
-
-Then open:
-
-```text
-http://localhost:8080
+http://<NODE_IP>:30080
 ```
